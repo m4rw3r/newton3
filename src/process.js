@@ -38,15 +38,16 @@ export default function run(data: mixed): Process<mixed> {
     // We assert that the above check verifies that it is a generator
     return runGenerator((data: any));
   }
-  else if(data === null || typeof data !== "object" || typeof data.cancel !== "function") {
+  else if(data === null ||
+          typeof data !== "object" ||
+          typeof data.then === "function" && typeof data.cancel !== "function") {
     // Cannot be cancelled, no cancel method
     return Promise.resolve(data);
   }
   else if(typeof data.then === "function" && typeof data.cancel === "function") {
     // TODO: Is this a decent way to make a cancellable promise?
-    return mkProcess((data: any), () => {
-      data.cancel();
-    });
+    // object does have then and cancel functions, it should be a process
+    return (data: any);
   }
   else if(Array.isArray(data)) {
     const nested = data.map(run);
@@ -95,7 +96,8 @@ function mkGeneratorRunner<T>(resolver: Resolver<T>): <R>(g: Generator<T, R, mix
     const p = new Promise((resolve, reject) => {
       function queue(r): void {
         if(r.done) {
-          resolve(((r.value: any): R));
+          // r.value on done is maybe nothing, we ignore this here. Generators MUST return a value
+          resolve((r.value: any));
         }
         else {
           // We need to store the original c here to be able to cancel it
