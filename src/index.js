@@ -17,6 +17,7 @@ Action (P) -> (Generator<RenderFn>)
 // TODO: How to handle nested states?
 // TODO: How to attach pre or post hooks? Maybe just promises?
 // TODO: Better API for managing during hook
+// TODO: Generalize, the state actions should return a new generic state-type
 */
 
 import run from "./process.js";
@@ -59,6 +60,7 @@ export class State<P, S> {
   }
 }
 
+// TODO: Improve error message, include underlying error
 export class ActionError<P, S> {
   action: Action<P, S>;
   params: P;
@@ -107,19 +109,23 @@ export default class StateManager<S> {
   }
   _onState<P, P>(render: RenderFn<P, S>, action: Action<P, S>, params: P, process: Process<RenderFn<P, S>>): void {
     if(this._current === process) {
+      const state = Object.freeze(new State(this, action, params));
+
       this._current = null;
 
       this._observers.forEach(o => {
         if(o.next) {
           // Any is used here since we assert that render will not mutate the observer-object itself
-          (o.next: any)(render(Object.freeze(new State(this, action, params))));
+          (o.next: any)(render(state));
         }
       });
     }
     else {
+      const cancelled = Object.freeze(new CancelledAction(action, params, render));
+
       this._observers.forEach(o => {
         if(o.error) {
-          o.error(new CancelledAction(action, params, render));
+          o.error(cancelled);
         }
       })
     }
@@ -128,6 +134,7 @@ export default class StateManager<S> {
     if(this._current === process) {
       // If we have sent it to any observer, if not we need to raise the error
       let handled = false;
+      const err   = Object.freeze(new ActionError(action, params, error));
 
       this._current = null;
 
@@ -135,7 +142,7 @@ export default class StateManager<S> {
         if(o.error) {
           handled = true;
 
-          o.error(new ActionError(action, params, error));
+          o.error(err);
         }
       });
 
@@ -144,9 +151,12 @@ export default class StateManager<S> {
       }
     }
     else {
+      // In this case we do not care about the error if the user of the library does not care
+      const err = Object.freeze(new CancelledError(action, params, error));
+
       this._observers.forEach(o => {
         if(o.error) {
-          o.error(new CancelledError(action, params, error));
+          o.error(err);
         }
       });
     }
