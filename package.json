@@ -2,17 +2,25 @@
   "name": "newton3",
   "version": "0.1.0",
   "scripts": {
-    "compile": "$(npm bin)/babel src/index.js --out-file index.js --source-maps",
+    "_compile": "$(npm bin)/babel src/index.js --out-file index.js --source-maps",
+    "compile": "$(npm bin)/rollup -c rollup.config.js",
     "flow": "flow src; test $? -eq 0 -o $? -eq 2"
   },
-  "main": "index.js",
+  "main": "src/index.js",
   "devDependencies": {
     "babel-cli": "^6.16.0",
+    "babel-plugin-external-helpers": "^6.8.0",
     "babel-plugin-syntax-flow": "^6.13.0",
     "babel-plugin-transform-flow-strip-types": "^6.14.0",
-    "babel-plugin-transform-object-rest-spread": "^6.16.0",
     "babel-preset-es2015": "^6.16.0",
-    "flow-bin": "^0.33.0",
-    "rollup": "^0.36.3"
+    "flow-bin": "^0.33.0"
+  },
+  "browserify": {
+    "transform": [
+      ["babelify", {
+        "presets": ["es2015"],
+        "plugins": ["syntax-flow", "transform-flow-strip-types"]
+      }]
+    ]
   }
 }
